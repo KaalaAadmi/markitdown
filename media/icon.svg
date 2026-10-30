@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <!-- Background rounded square -->
+  <rect width="128" height="128" rx="22" fill="#1e1e2e"/>
+
+  <!-- Document shape -->
+  <rect x="28" y="18" width="58" height="72" rx="5" fill="#313244"/>
+  <!-- Folded corner -->
+  <path d="M74 18 L86 30 L74 30 Z" fill="#1e1e2e"/>
+  <path d="M74 18 L86 30 H74 Z" fill="#45475a"/>
+
+  <!-- Text lines on doc (H1, H2, paragraph) -->
+  <!-- H1 line - thick -->
+  <rect x="35" y="38" width="32" height="5" rx="2.5" fill="#cdd6f4"/>
+  <!-- H2 line -->
+  <rect x="35" y="50" width="24" height="3.5" rx="1.75" fill="#a6adc8"/>
+  <!-- Para lines -->
+  <rect x="35" y="60" width="36" height="3" rx="1.5" fill="#585b70"/>
+  <rect x="35" y="67" width="30" height="3" rx="1.5" fill="#585b70"/>
+  <rect x="35" y="74" width="20" height="3" rx="1.5" fill="#585b70"/>
+
+  <!-- Pencil / edit indicator — bottom right -->
+  <g transform="translate(72, 72) rotate(-35)">
+    <!-- Pencil body -->
+    <rect x="-5" y="-22" width="10" height="28" rx="2" fill="#f38ba8"/>
+    <!-- Pencil tip -->
+    <path d="M-5 6 L5 6 L0 16 Z" fill="#eba0ac"/>
+    <!-- Pencil top eraser band -->
+    <rect x="-5" y="-26" width="10" height="5" rx="1.5" fill="#f2cdcd"/>
+    <!-- Pencil tip line -->
+    <line x1="-5" y1="6" x2="5" y2="6" stroke="#1e1e2e" stroke-width="1"/>
+  </g>
+</svg>

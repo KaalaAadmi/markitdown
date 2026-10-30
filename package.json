@@ -4,6 +4,7 @@
   "description": "Because someone had to save your markdown files.",
   "version": "0.0.1",
   "publisher": "KaalaAadmi",
+  "icon": "media/icon.png",
   "repository": { "type": "git", "url": "https://github.com/KaalaAadmi/markitdown" },
   "engines": {
     "vscode": "^1.85.0"
