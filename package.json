@@ -2,16 +2,28 @@
   "name": "markitdown",
   "displayName": "MarkItDown",
   "description": "Because someone had to save your markdown files.",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "publisher": "KaalaAadmi",
   "icon": "media/icon.png",
-  "repository": { "type": "git", "url": "https://github.com/KaalaAadmi/markitdown" },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/KaalaAadmi/markitdown"
+  },
   "engines": {
     "vscode": "^1.85.0"
   },
   "license": "MIT",
-  "categories": ["Visualization", "Other"],
-  "keywords": ["markdown", "wysiwyg", "editor", "readme", "notion"],
+  "categories": [
+    "Visualization",
+    "Other"
+  ],
+  "keywords": [
+    "markdown",
+    "wysiwyg",
+    "editor",
+    "readme",
+    "notion"
+  ],
   "activationEvents": [],
   "main": "./out/extension.js",
   "contributes": {
@@ -20,8 +32,12 @@
         "viewType": "readmeEditor.wysiwyg",
         "displayName": "MarkItDown WYSIWYG",
         "selector": [
-          { "filenamePattern": "*.md" },
-          { "filenamePattern": "*.markdown" }
+          {
+            "filenamePattern": "*.md"
+          },
+          {
+            "filenamePattern": "*.markdown"
+          }
         ],
         "priority": "option"
       }
