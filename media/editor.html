@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MarkItDown</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { overflow: hidden; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 14px; height: 100vh; display: flex; flex-direction: column; background: var(--vscode-editor-background); color: var(--vscode-editor-foreground); }
+
+  #toolbar { display: flex; flex-wrap: wrap; gap: 4px; padding: 6px 8px; border-bottom: 1px solid var(--vscode-editorWidget-border, #333); background: var(--vscode-editorGroupHeader-tabsBackground); }
+  button { background: var(--vscode-button-secondaryBackground, #3a3d41); color: var(--vscode-button-secondaryForeground, #ccc); border: none; border-radius: 3px; padding: 3px 8px; cursor: pointer; font-size: 12px; font-family: inherit; }
+  button:hover { background: var(--vscode-button-secondaryHoverBackground, #4a4d51); }
+  .sep { width: 1px; background: var(--vscode-editorWidget-border, #555); margin: 2px 2px; }
+  select { background: var(--vscode-button-secondaryBackground, #3a3d41); color: var(--vscode-button-secondaryForeground, #ccc); border: 1px solid var(--vscode-editorWidget-border, #555); border-radius: 3px; padding: 2px 4px; font-size: 12px; font-family: inherit; cursor: pointer; }
+
+  #editor-container { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 24px 32px 40vh 32px; max-width: 860px; width: 100%; margin: 0 auto; position: relative; }
+  #editor { outline: none; min-height: 100%; line-height: 1.7; }
+  /* spacing between every block-level child */
+  #editor > * { margin-bottom: 0.75em; }
+  #editor > *:last-child { margin-bottom: 0; }
+
+  /* drag-to-reorder */
+  #editor > *.drag-over-top { border-top: 2px solid var(--vscode-focusBorder, #4a9eff); }
+  #editor > *.drag-over-bot { border-bottom: 2px solid var(--vscode-focusBorder, #4a9eff); }
+  #editor > *.dragging { opacity: 0.4; }
+  /* handle lives in #editor-container, absolutely positioned */
+  .drag-handle { position: absolute; left: 6px; width: 18px; height: 18px; cursor: grab; opacity: 0; display: flex; align-items: center; justify-content: center; color: var(--vscode-descriptionForeground, #888); font-size: 14px; user-select: none; transition: opacity 0.1s; pointer-events: auto; z-index: 10; }
+  .drag-handle:active { cursor: grabbing; }
+  #editor-container:hover .drag-handle { opacity: 0; } /* hidden until block hovered */
+
+  #editor h1 { font-size: 2em; font-weight: 700; border-bottom: 1px solid var(--vscode-editorWidget-border, #333); padding-bottom: 0.3em; margin-bottom: 0.6em; margin-top: 0.8em; }
+  #editor h2 { font-size: 1.5em; font-weight: 600; border-bottom: 1px solid var(--vscode-editorWidget-border, #333); padding-bottom: 0.2em; margin-bottom: 0.5em; margin-top: 0.8em; }
+  #editor h3 { font-size: 1.25em; font-weight: 600; margin-bottom: 0.4em; margin-top: 0.8em; }
+  #editor h4, #editor h5, #editor h6 { font-weight: 600; margin-bottom: 0.3em; margin-top: 0.6em; }
+  #editor p { margin-bottom: 0.8em; }
+  #editor ul, #editor ol { padding-left: 1.5em; margin-bottom: 0.8em; }
+  #editor li { margin-bottom: 0.2em; }
+  #editor blockquote { border-left: 3px solid var(--vscode-textBlockQuote-border, #4a9eff); padding-left: 1em; margin: 0.5em 0; color: var(--vscode-textBlockQuote-foreground, #aaa); }
+  #editor code { font-family: 'SF Mono', 'Fira Code', monospace; background: var(--vscode-textCodeBlock-background, rgba(255,255,255,0.1)); padding: 0.1em 0.3em; border-radius: 3px; font-size: 0.9em; }
+  #editor pre { background: var(--vscode-textCodeBlock-background, rgba(255,255,255,0.1)); padding: 1em; border-radius: 4px; overflow-x: auto; margin-bottom: 0.8em; }
+  #editor pre code { background: none; padding: 0; }
+  #editor table { border-collapse: collapse; margin-bottom: 0.8em; width: 100%; }
+  #editor th, #editor td { border: 1px solid var(--vscode-editorWidget-border, #555); padding: 6px 12px; text-align: left; }
+  #editor th { background: var(--vscode-editorGroupHeader-tabsBackground); font-weight: 600; }
+  #editor hr { border: none; border-top: 2px solid var(--vscode-editorWidget-border, #555); margin: 1em 0; }
+  #editor a { color: var(--vscode-textLink-foreground, #4a9eff); }
+  #editor img { max-width: 100%; }
+  #editor strong { font-weight: 700; }
+  #editor em { font-style: italic; }
+  #editor del { text-decoration: line-through; }
+
+  #status { flex-shrink: 0; font-size: 11px; color: var(--vscode-statusBar-foreground, #aaa); padding: 3px 8px; background: var(--vscode-statusBar-background); }
+
+  /* Slash command menu */
+  #slash-menu { display: none; position: fixed; z-index: 9999; background: var(--vscode-editorWidget-background, #252526); border: 1px solid var(--vscode-editorWidget-border, #454545); border-radius: 6px; box-shadow: 0 4px 16px rgba(0,0,0,0.4); width: 260px; max-height: 300px; overflow-y: auto; padding: 4px 0; }
+  #slash-menu.visible { display: block; }
+  .slash-item { display: flex; align-items: center; gap: 10px; padding: 6px 12px; cursor: pointer; font-size: 13px; }
+  .slash-item:hover, .slash-item.active { background: var(--vscode-list-hoverBackground, #2a2d2e); }
+  .slash-item .si-icon { font-size: 16px; width: 24px; text-align: center; flex-shrink: 0; }
+  .slash-item .si-label { font-weight: 500; color: var(--vscode-editor-foreground); }
+  .slash-item .si-hint { font-size: 11px; color: var(--vscode-descriptionForeground, #888); margin-left: auto; }
+  #slash-query { font-size: 11px; color: var(--vscode-descriptionForeground, #888); padding: 2px 12px 4px; border-bottom: 1px solid var(--vscode-editorWidget-border, #333); }
+</style>
+</head>
+<body>
+<div id="toolbar">
+  <select id="heading-select" title="Heading">
+    <option value="">Paragraph</option>
+    <option value="h1">H1</option>
+    <option value="h2">H2</option>
+    <option value="h3">H3</option>
+    <option value="h4">H4</option>
+    <option value="h5">H5</option>
+    <option value="h6">H6</option>
+  </select>
+  <div class="sep"></div>
+  <button id="btn-bold" title="Bold (Ctrl+B)"><b>B</b></button>
+  <button id="btn-italic" title="Italic (Ctrl+I)"><i>I</i></button>
+  <button id="btn-strikethrough" title="Strikethrough"><s>S</s></button>
+  <button id="btn-code" title="Inline code">&lt;/&gt;</button>
+  <div class="sep"></div>
+  <button id="btn-ul" title="Bullet list">&#8226; List</button>
+  <button id="btn-ol" title="Ordered list">1. List</button>
+  <button id="btn-quote" title="Blockquote">&#8220; Quote</button>
+  <button id="btn-hr" title="Horizontal rule">&#8212; HR</button>
+  <div class="sep"></div>
+  <button id="btn-table" title="Insert table">&#8862; Table</button>
+  <button id="btn-codeblock" title="Code block">``` Block</button>
+  <button id="btn-link" title="Insert link">&#128279; Link</button>
+  <button id="btn-image" title="Insert image">&#128444; Image</button>
+</div>
+<div id="slash-menu" role="listbox" aria-label="Insert block">
+  <div id="slash-query"></div>
+</div>
+<div id="editor-container">
+  <div id="editor" contenteditable="true" spellcheck="true"></div>
+</div>
+<div id="status">Loading&#8230;</div>
+
+<script>
+// ponytail: hand-rolled md<->html, covers 90% of README GFM.
+// Swap in 'marked' + 'turndown' if you hit complex nesting edge cases.
+
+// ── Markdown → HTML ──────────────────────────────────────────────────────────
+function mdToHtml(md) {
+  const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+  // Fenced code blocks (must go first)
+  const codeBlocks = [];
+  md = md.replace(/```(\w*)\n([\s\S]*?)\n```/gm, (_, lang, code) => {
+    const idx = codeBlocks.length;
+    codeBlocks.push('<pre><code>' + esc(code) + '</code></pre>');
+    return '\x00CODE' + idx + '\x00';
+  });
+
+  const inline = s => s
+    .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img alt="$1" src="$2">')
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
+    .replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/~~(.+?)~~/g, '<del>$1</del>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>');
+
+  const lines = md.split('\n');
+  const out = [];
+  let inUl = false, inOl = false, inTable = false, tableHeaderDone = false;
+
+  const closeList = () => { if (inUl) { out.push('</ul>'); inUl=false; } if (inOl) { out.push('</ol>'); inOl=false; } };
+  const closeTable = () => { if (inTable) { out.push('</tbody></table>'); inTable=false; tableHeaderDone=false; } };
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    // Restore code block
+    const cbMatch = line.match(/\x00CODE(\d+)\x00/);
+    if (cbMatch) { closeList(); closeTable(); out.push(codeBlocks[+cbMatch[1]]); continue; }
+
+    // Headings
+    const hm = line.match(/^(#{1,6}) +(.*)/);
+    if (hm) { closeList(); closeTable(); const l=hm[1].length; out.push('<h'+l+'>'+inline(hm[2])+'</h'+l+'>'); continue; }
+
+    // HR
+    if (/^(-{3,}|\*{3,}|_{3,})$/.test(line.trim())) { closeList(); closeTable(); out.push('<hr>'); continue; }
+
+    // Blockquote
+    if (line.startsWith('> ')) { closeList(); closeTable(); out.push('<blockquote>'+inline(line.slice(2))+'</blockquote>'); continue; }
+
+    // Table
+    if (line.includes('|') && lines[i+1] && /^\|?[\s:|-]+\|/.test(lines[i+1])) {
+      closeList();
+      if (!inTable) {
+        out.push('<table><thead><tr>');
+        line.split('|').filter(c=>c.trim()).forEach(h=>out.push('<th>'+inline(h.trim())+'</th>'));
+        out.push('</tr></thead><tbody>');
+        inTable=true; tableHeaderDone=true; i++; // skip separator
+      }
+      continue;
+    }
+    if (inTable && line.includes('|')) {
+      out.push('<tr>'+line.split('|').filter(c=>c.trim()).map(c=>'<td>'+inline(c.trim())+'</td>').join('')+'</tr>');
+      continue;
+    }
+    closeTable();
+
+    // UL
+    if (/^[-*+] /.test(line)) { if (!inUl){if(inOl){out.push('</ol>');inOl=false;}out.push('<ul>');inUl=true;} out.push('<li>'+inline(line.slice(2))+'</li>'); continue; }
+    // OL
+    if (/^\d+\. /.test(line)) { if (!inOl){if(inUl){out.push('</ul>');inUl=false;}out.push('<ol>');inOl=true;} out.push('<li>'+inline(line.replace(/^\d+\. /,''))+'</li>'); continue; }
+
+    closeList();
+    if (line.trim()) out.push('<p>'+inline(line)+'</p>');
+  }
+  closeList(); closeTable();
+  return out.join('\n');
+}
+
+// ── HTML → Markdown ──────────────────────────────────────────────────────────
+function nodeToMd(node) {
+  if (node.nodeType === 3 /*TEXT*/) return node.textContent;
+  if (node.nodeType !== 1 /*ELEMENT*/) return '';
+  if (node.classList && node.classList.contains('drag-handle')) return '';
+  const tag = node.tagName.toLowerCase();
+  const ch = () => Array.from(node.childNodes).map(nodeToMd).join('');
+
+  switch (tag) {
+    case 'h1': return '# ' + ch() + '\n\n';
+    case 'h2': return '## ' + ch() + '\n\n';
+    case 'h3': return '### ' + ch() + '\n\n';
+    case 'h4': return '#### ' + ch() + '\n\n';
+    case 'h5': return '##### ' + ch() + '\n\n';
+    case 'h6': return '###### ' + ch() + '\n\n';
+    case 'p':  return ch() + '\n\n';
+    case 'br': return '\n';
+    case 'strong': case 'b': return '**' + ch() + '**';
+    case 'em':    case 'i': return '*' + ch() + '*';
+    case 'del':   case 's': return '~~' + ch() + '~~';
+    case 'code':
+      return node.closest('pre') ? ch() : '`' + ch() + '`';
+    case 'pre': {
+      const code = node.querySelector('code');
+      return '```\n' + (code ? code.textContent : ch()) + '\n```\n\n';
+    }
+    case 'blockquote': return '> ' + ch().replace(/\n\n$/, '\n') + '\n\n';
+    case 'ul':
+      return Array.from(node.children)
+        .filter(c => c.tagName.toLowerCase() === 'li' && c.textContent.trim())
+        .map(li => '- ' + nodeToMd(li)).join('\n') + '\n\n';
+    case 'ol':
+      return Array.from(node.children)
+        .filter(c => c.tagName.toLowerCase() === 'li' && c.textContent.trim())
+        .map((li, i) => (i+1) + '. ' + nodeToMd(li)).join('\n') + '\n\n';
+    case 'li': return ch().replace(/\n+$/, '');
+    case 'hr': return '\n---\n\n';
+    case 'a':  return '[' + ch() + '](' + (node.getAttribute('href') || '') + ')';
+    case 'img': return '![' + (node.getAttribute('alt')||'') + '](' + (node.getAttribute('src')||'') + ')';
+    case 'table': {
+      const rows = Array.from(node.querySelectorAll('tr'));
+      if (!rows.length) return '';
+      const toRow = r => '| ' + Array.from(r.querySelectorAll('th,td'))
+        .map(c => c.textContent.replace(/\|/g,'\\|').trim()).join(' | ') + ' |';
+      const header = toRow(rows[0]);
+      const sep = '| ' + Array.from(rows[0].querySelectorAll('th,td')).map(() => '---').join(' | ') + ' |';
+      const body = rows.slice(1).map(toRow).join('\n');
+      return header + '\n' + sep + (body ? '\n' + body : '') + '\n\n';
+    }
+    case 'thead': case 'tbody': case 'tr': return ch();
+    case 'th': case 'td': return ch();
+    default: return ch();
+  }
+}
+
+function serializeEditor() {
+  const editor = document.getElementById('editor');
+  return Array.from(editor.childNodes).map(nodeToMd).join('')
+    .replace(/\n{3,}/g, '\n\n').trimEnd() + '\n';
+}
+
+// ── VS Code bridge ────────────────────────────────────────────────────────────
+const vscode = acquireVsCodeApi();
+let dirty = false;
+let saveTimer;
+
+window.addEventListener('message', ({ data }) => {
+  if (data.type === 'update') {
+    const ed = document.getElementById('editor');
+    // Skip if editor is focused — user is typing; our suppressCount in editor.ts
+    // should prevent this from firing, but guard here too.
+    if (document.activeElement === ed) return;
+    ed.innerHTML = mdToHtml(data.markdown);
+    document.getElementById('status').textContent = 'Saved';
+    dirty = false;
+    refreshHandles();
+  }
+});
+
+document.getElementById('editor').addEventListener('input', () => {
+  dirty = true;
+  document.getElementById('status').textContent = 'Unsaved changes\u2026';
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(save, 800);
+});
+
+function save() {
+  if (!dirty) return;
+  vscode.postMessage({ type: 'save', markdown: serializeEditor() });
+  dirty = false;
+  document.getElementById('status').textContent = 'Saved';
+}
+
+// ── Toolbar ───────────────────────────────────────────────────────────────────
+document.getElementById('heading-select').addEventListener('change', e => {
+  document.execCommand('formatBlock', false, e.target.value || 'p');
+  e.target.value = '';
+  document.getElementById('editor').focus();
+});
+
+document.getElementById('btn-bold').addEventListener('click', () => document.execCommand('bold'));
+document.getElementById('btn-italic').addEventListener('click', () => document.execCommand('italic'));
+document.getElementById('btn-strikethrough').addEventListener('click', () => document.execCommand('strikethrough'));
+document.getElementById('btn-ul').addEventListener('click', () => document.execCommand('insertUnorderedList'));
+document.getElementById('btn-ol').addEventListener('click', () => document.execCommand('insertOrderedList'));
+document.getElementById('btn-quote').addEventListener('click', () => document.execCommand('formatBlock', false, 'blockquote'));
+
+document.getElementById('btn-code').addEventListener('click', () => {
+  const sel = window.getSelection();
+  if (!sel || !sel.rangeCount) return;
+  const range = sel.getRangeAt(0);
+  const code = document.createElement('code');
+  if (range.collapsed) {
+    code.textContent = 'code';
+    range.insertNode(code);
+    sel.collapse(code, 1);
+  } else {
+    try { range.surroundContents(code); } catch (_) { document.execCommand('insertHTML', false, '<code>' + range.toString() + '</code>'); }
+  }
+});
+
+document.getElementById('btn-hr').addEventListener('click', () =>
+  document.execCommand('insertHTML', false, '<hr><p><br></p>'));
+
+document.getElementById('btn-codeblock').addEventListener('click', () =>
+  document.execCommand('insertHTML', false, '<pre><code>code here</code></pre><p><br></p>'));
+
+document.getElementById('btn-table').addEventListener('click', insertTable);
+
+document.getElementById('btn-link').addEventListener('click', () => {
+  const url = prompt('URL:', 'https://');
+  if (url) document.execCommand('createLink', false, url);
+});
+
+document.getElementById('btn-image').addEventListener('click', () => {
+  const url = prompt('Image URL:', 'https://');
+  if (url) document.execCommand('insertImage', false, url);
+});
+
+document.getElementById('editor').addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+    e.preventDefault();
+    save();
+  }
+});
+
+// ── Slash command menu ────────────────────────────────────────────────────────
+const SLASH_COMMANDS = [
+  { icon: 'T', label: 'Heading 1',    hint: 'h1', run: () => document.execCommand('formatBlock', false, 'h1') },
+  { icon: 'T', label: 'Heading 2',    hint: 'h2', run: () => document.execCommand('formatBlock', false, 'h2') },
+  { icon: 'T', label: 'Heading 3',    hint: 'h3', run: () => document.execCommand('formatBlock', false, 'h3') },
+  { icon: '\u2022', label: 'Bullet list',   hint: 'ul', run: () => document.execCommand('insertUnorderedList') },
+  { icon: '1.', label: 'Numbered list', hint: 'ol', run: () => document.execCommand('insertOrderedList') },
+  { icon: '\u201C', label: 'Blockquote',    hint: 'quote', run: () => document.execCommand('formatBlock', false, 'blockquote') },
+  { icon: '\u2014', label: 'Divider',       hint: 'hr',    run: () => document.execCommand('insertHTML', false, '<hr><p><br></p>') },
+  { icon: '\u22A2', label: 'Code block',    hint: 'code',  run: () => document.execCommand('insertHTML', false, '<pre><code>code here</code></pre><p><br></p>') },
+  { icon: '\u22DE', label: 'Table',         hint: 'table', run: insertTable },
+  { icon: '\uD83D\uDD17', label: 'Link',    hint: 'link',  run: () => { const u = prompt('URL:','https://'); if(u) document.execCommand('createLink',false,u); } },
+  { icon: '\uD83D\uDDBC', label: 'Image',   hint: 'image', run: () => { const u = prompt('Image URL:','https://'); if(u) document.execCommand('insertImage',false,u); } },
+  { icon: 'p',  label: 'Paragraph',    hint: 'text', run: () => document.execCommand('formatBlock', false, 'p') },
+];
+
+function insertTable() {
+  const cols = parseInt(prompt('Columns?', '3') || '3', 10);
+  const rows = parseInt(prompt('Rows?', '2') || '2', 10);
+  const headerCells = Array.from({length: cols}, (_, i) => '<th contenteditable="true">Header ' + (i+1) + '</th>').join('');
+  const bodyRow = '<tr>' + Array.from({length: cols}, () => '<td contenteditable="true">Cell</td>').join('') + '</tr>';
+  document.execCommand('insertHTML', false,
+    '<table><thead><tr>' + headerCells + '</tr></thead><tbody>' + Array.from({length: rows}, () => bodyRow).join('') + '</tbody></table><p><br></p>');
+}
+
+// ── Slash command menu ────────────────────────────────────────────────────────
+const slashMenu = document.getElementById('slash-menu');
+const slashQueryEl = document.getElementById('slash-query');
+const editorEl = document.getElementById('editor');
+let slashActive = false;
+let slashQuery = '';
+let slashSelected = 0;
+// We store the block element the slash was typed in + snapshot of its text
+// so we can find and delete the "/query" text reliably at commit time.
+let slashBlock = null;       // the direct child of #editor where / was typed
+let slashCharOffset = 0;     // offset of '/' in its text node
+
+function slashGetRect() {
+  // Use getClientRects() on a zero-length range at the caret — no DOM mutations,
+  // no normalize(), nothing that can invalidate the selection.
+  const sel = window.getSelection();
+  if (!sel || !sel.rangeCount) return null;
+  const range = sel.getRangeAt(0).cloneRange();
+  range.collapse(true);
+
+  // Try getClientRects first (works when caret is within a text run)
+  let rects = range.getClientRects();
+  if (rects.length) return rects[0];
+
+  // Caret is at end-of-block: extend range one char backward and use that rect
+  if (range.startOffset > 0) {
+    range.setStart(range.startContainer, range.startOffset - 1);
+    range.collapse(false);
+    rects = range.getClientRects();
+    if (rects.length) {
+      const r = rects[0];
+      // Return a rect positioned just after the char
+      return { top: r.top, bottom: r.bottom, left: r.right, right: r.right, width: 0, height: r.height };
+    }
+  }
+
+  // Final fallback: use the parent element's rect
+  const el = range.startContainer.nodeType === 3
+    ? range.startContainer.parentElement
+    : range.startContainer;
+  return el ? el.getBoundingClientRect() : null;
+}
+
+function slashOpen() {
+  slashActive = true;
+  slashQuery = '';
+  slashSelected = 0;
+  slashRender();
+
+  const rect = slashGetRect();
+  if (!rect) return;
+
+  const menuH = Math.min(slashMenu.scrollHeight, 300);
+  const menuW = 260;
+  const spaceBelow = window.innerHeight - rect.bottom;
+  const top = spaceBelow >= menuH + 8 ? rect.bottom + 4 : Math.max(4, rect.top - menuH - 4);
+  const left = Math.min(Math.max(4, rect.left), window.innerWidth - menuW - 8);
+  slashMenu.style.top = top + 'px';
+  slashMenu.style.left = left + 'px';
+  slashMenu.classList.add('visible');
+}
+
+function slashClose() {
+  slashActive = false;
+  slashMenu.classList.remove('visible');
+}
+
+function slashRender() {
+  const q = slashQuery.toLowerCase();
+  const filtered = SLASH_COMMANDS.filter(c =>
+    c.label.toLowerCase().includes(q) || c.hint.toLowerCase().includes(q)
+  );
+  slashQueryEl.textContent = q ? '/' + q : '';
+  if (slashSelected >= filtered.length) slashSelected = 0;
+  // Always rebuild items from scratch so closures always capture the current filtered list
+  slashMenu.querySelectorAll('.slash-item').forEach(el => el.remove());
+  if (!filtered.length) {
+    // Show "no results" but keep menu open — user can keep backspacing
+    const el = document.createElement('div');
+    el.className = 'slash-item';
+    el.style.opacity = '0.5';
+    el.style.pointerEvents = 'none';
+    el.innerHTML = '<span class="si-label">No results</span>';
+    slashMenu.appendChild(el);
+    return;
+  }
+  filtered.forEach((cmd, i) => {
+    const el = document.createElement('div');
+    el.className = 'slash-item';
+    el.setAttribute('role', 'option');
+    el.innerHTML = '<span class="si-icon"></span><span class="si-label"></span><span class="si-hint"></span>';
+    el.addEventListener('mousedown', ev => { ev.preventDefault(); slashCommit(cmd); });
+    el.querySelector('.si-icon').textContent = cmd.icon;
+    el.querySelector('.si-label').textContent = cmd.label;
+    el.querySelector('.si-hint').textContent = cmd.hint;
+    if (i === slashSelected) el.classList.add('active');
+    slashMenu.appendChild(el);
+  });
+}
+
+function slashCommit(cmd) {
+  slashClose();
+  editorEl.focus(); // focus FIRST so execCommand knows where to act
+  // Now delete "/query" from the block and leave caret in place
+  if (slashBlock && slashBlock.isConnected) {
+    const toDelete = '/' + slashQuery;
+    const walker = document.createTreeWalker(slashBlock, NodeFilter.SHOW_TEXT);
+    let node;
+    while ((node = walker.nextNode())) {
+      const idx = node.textContent.lastIndexOf(toDelete);
+      if (idx !== -1) {
+        const r = document.createRange();
+        r.setStart(node, idx);
+        r.setEnd(node, idx + toDelete.length);
+        r.deleteContents();
+        const sel = window.getSelection();
+        // collapsed range: caret is now at the delete point
+        if (sel) { sel.removeAllRanges(); sel.addRange(r); }
+        break;
+      }
+    }
+  }
+  cmd.run();
+}
+
+editorEl.addEventListener('keydown', e => {
+  if (!slashActive) return;
+  const q = slashQuery.toLowerCase();
+  const filtered = SLASH_COMMANDS.filter(c =>
+    c.label.toLowerCase().includes(q) || c.hint.toLowerCase().includes(q)
+  );
+  if (e.key === 'Escape') { e.preventDefault(); slashClose(); return; }
+  if (e.key === 'ArrowDown') { e.preventDefault(); slashSelected = (slashSelected + 1) % filtered.length; slashRender(); return; }
+  if (e.key === 'ArrowUp')   { e.preventDefault(); slashSelected = (slashSelected - 1 + filtered.length) % filtered.length; slashRender(); return; }
+  if (e.key === 'Enter')     { e.preventDefault(); if (filtered[slashSelected]) slashCommit(filtered[slashSelected]); return; }
+  if (e.key === 'Backspace') {
+    if (slashQuery.length === 0) { slashClose(); return; }
+    slashQuery = slashQuery.slice(0, -1);
+    slashRender();
+    return;
+  }
+}, true);
+
+editorEl.addEventListener('keyup', e => {
+  if (slashActive) {
+    if (e.key.length === 1 && e.key !== '/') { slashQuery += e.key; slashRender(); }
+    return;
+  }
+  if (e.key === '/') {
+    const sel = window.getSelection();
+    if (!sel || !sel.rangeCount) return;
+    const range = sel.getRangeAt(0);
+    const textBefore = range.startContainer.textContent.slice(0, range.startOffset);
+    if (/^\s*\/$/.test(textBefore)) {
+      // find the direct-child block of #editor that contains the caret
+      let node = range.startContainer;
+      while (node && node.parentNode !== editorEl) node = node.parentNode;
+      slashBlock = node || null;
+      slashOpen();
+    }
+  }
+});
+
+document.addEventListener('mousedown', e => {
+  if (slashActive && !slashMenu.contains(e.target)) slashClose();
+});
+
+// ── Drag to reorder blocks ────────────────────────────────────────────────────
+// The handle floats in #editor-container (never inside a block element)
+// so it can never corrupt list/heading DOM or interfere with typing.
+const editorContainer = document.getElementById('editor-container');
+const dragHandle = document.createElement('div');
+dragHandle.className = 'drag-handle';
+dragHandle.textContent = '⠿';
+dragHandle.title = 'Drag to reorder';
+dragHandle.setAttribute('draggable', 'true');
+editorContainer.appendChild(dragHandle);
+
+let dragTarget = null; // block currently hovered
+let dragSrc = null;    // block being dragged
+
+// Show handle beside whichever block the mouse is over
+editorEl.addEventListener('mouseover', ev => {
+  const block = ev.target.closest('#editor > *');
+  if (!block) return;
+  dragTarget = block;
+  const containerRect = editorContainer.getBoundingClientRect();
+  const blockRect = block.getBoundingClientRect();
+  const scrollTop = editorContainer.scrollTop;
+  dragHandle.style.top = (blockRect.top - containerRect.top + scrollTop + blockRect.height / 2 - 9) + 'px';
+  dragHandle.style.opacity = '1';
+});
+
+editorEl.addEventListener('mouseleave', () => {
+  if (!dragSrc) dragHandle.style.opacity = '0';
+});
+dragHandle.addEventListener('mouseleave', () => {
+  if (!dragSrc) dragHandle.style.opacity = '0';
+});
+
+dragHandle.addEventListener('dragstart', ev => {
+  if (!dragTarget) return;
+  dragSrc = dragTarget;
+  ev.dataTransfer.effectAllowed = 'move';
+  ev.dataTransfer.setData('text/plain', '');
+  setTimeout(() => dragSrc && dragSrc.classList.add('dragging'), 0);
+});
+
+dragHandle.addEventListener('dragend', () => {
+  if (dragSrc) dragSrc.classList.remove('dragging');
+  document.querySelectorAll('.drag-over-top,.drag-over-bot').forEach(x =>
+    x.classList.remove('drag-over-top', 'drag-over-bot'));
+  dragSrc = null;
+  dragHandle.style.opacity = '0';
+  save();
+});
+
+editorEl.addEventListener('dragover', ev => {
+  ev.preventDefault();
+  document.querySelectorAll('.drag-over-top,.drag-over-bot').forEach(x =>
+    x.classList.remove('drag-over-top', 'drag-over-bot'));
+  const target = ev.target.closest('#editor > *');
+  if (!target || target === dragSrc) return;
+  const rect = target.getBoundingClientRect();
+  target.classList.add(ev.clientY < rect.top + rect.height / 2 ? 'drag-over-top' : 'drag-over-bot');
+});
+
+editorEl.addEventListener('drop', ev => {
+  ev.preventDefault();
+  const target = ev.target.closest('#editor > *');
+  if (!target || !dragSrc || target === dragSrc) return;
+  const rect = target.getBoundingClientRect();
+  editorEl.insertBefore(dragSrc, ev.clientY < rect.top + rect.height / 2 ? target : target.nextSibling);
+  document.querySelectorAll('.drag-over-top,.drag-over-bot').forEach(x =>
+    x.classList.remove('drag-over-top', 'drag-over-bot'));
+});
+
+// ── Click empty space below blocks → add new paragraph ───────────────────────
+document.getElementById('editor-container').addEventListener('click', ev => {
+  // Only fire when click lands on the container itself or #editor directly (not on a block)
+  if (ev.target !== editorEl && ev.target !== document.getElementById('editor-container')) return;
+  // Append a blank paragraph and place caret in it
+  const p = document.createElement('p');
+  p.innerHTML = '<br>';
+  editorEl.appendChild(p);
+  const range = document.createRange();
+  range.setStart(p, 0);
+  range.collapse(true);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
+  editorEl.focus();
+});
+
+function refreshHandles() {} // no-op: single floating handle, nothing to init per-block
+</script>
+</body>
+</html>
