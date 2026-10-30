@@ -9,29 +9,23 @@
   "engines": {
     "vscode": "^1.85.0"
   },
-  "categories": [
-    "Other"
-  ],
+  "license": "MIT",
+  "categories": ["Visualization", "Other"],
+  "keywords": ["markdown", "wysiwyg", "editor", "readme", "notion"],
   "activationEvents": [],
   "main": "./out/extension.js",
   "contributes": {
     "customEditors": [
       {
         "viewType": "readmeEditor.wysiwyg",
-        "displayName": "README WYSIWYG Editor",
+        "displayName": "MarkItDown WYSIWYG",
         "selector": [
           { "filenamePattern": "*.md" },
           { "filenamePattern": "*.markdown" }
         ],
         "priority": "option"
       }
-    ],
-    "configurationDefaults": {
-      "workbench.editorAssociations": {
-        "*.md": "readmeEditor.wysiwyg",
-        "*.markdown": "readmeEditor.wysiwyg"
-      }
-    }
+    ]
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
