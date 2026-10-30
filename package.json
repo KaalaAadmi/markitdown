@@ -2,7 +2,7 @@
   "name": "markitdown",
   "displayName": "MarkItDown Editor",
   "description": "Because someone had to save your markdown files.",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "publisher": "KaalaAadmi",
   "icon": "media/icon.png",
   "repository": {
