@@ -1,6 +1,6 @@
 {
   "name": "markitdown",
-  "displayName": "MarkItDown",
+  "displayName": "MarkItDown Editor",
   "description": "Because someone had to save your markdown files.",
   "version": "0.0.2",
   "publisher": "KaalaAadmi",
@@ -30,7 +30,7 @@
     "customEditors": [
       {
         "viewType": "readmeEditor.wysiwyg",
-        "displayName": "MarkItDown WYSIWYG",
+        "displayName": "MarkItDown WYSIWYG Editor",
         "selector": [
           {
             "filenamePattern": "*.md"
